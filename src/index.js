@@ -53,6 +53,20 @@ class Dog extends Creature {
         super("Пес-бандит", 3);
     }
 }
+class PseudoDuck extends Dog {
+    constructor() {
+        super("Псевдоутка,", 3);
+    }
+
+    quacks() {
+        console.log('quack');
+    }
+
+    swims() {
+        console.log('swims');
+    }
+}
+
 
 class Trasher extends Dog {
     constructor() {
