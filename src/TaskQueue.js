@@ -1,63 +1,54 @@
-import Card from './Card.js';
-import Game from './Game.js';
-import TaskQueue from './TaskQueue.js';
-import SpeedRate from './SpeedRate.js';
+function runNextTask(taskQueue) {
+    if (taskQueue.running || taskQueue.tasks.length === 0) {
+        return;
+    }
+    taskQueue.running = true;
+    const task = taskQueue.tasks.shift();
 
-function isDuck(card) {
-    return card && card.quacks && card.swims;
+    if (task.runAndContinue) {
+        setTimeout(() => {
+            task.runAndContinue(() => {
+                task.dispose && task.dispose();
+                taskQueue.running = false;
+
+                setTimeout(() => {
+                    runNextTask(taskQueue);
+                });
+            });
+        }, 0);
+    }
+    else {
+        runNextTask(taskQueue);
+    }
 }
 
-function isDog(card) {
-    return card instanceof Dog;
-}
-
-function getCreatureDescription(card) {
-    if (isDuck(card) && isDog(card)) {
-        return 'Утка-Собака';
-    }
-    if (isDuck(card)) {
-        return 'Утка';
-    }
-    if (isDog(card)) {
-        return 'Собака';
-    }
-    return 'Существо';
-}
-
-class Duck extends Card {
+class TaskQueue {
     constructor() {
-        super("Мирная утка", 2);
+        this.tasks = [];
+        this.running = false;
     }
 
-    quacks() {
-        console.log('quack');
+    push (run, dispose, duration) {
+        if (duration === undefined || duration === null) {
+            this.tasks.push({runAndContinue: run, dispose});
+        } else {
+            this.tasks.push({
+                runAndContinue: (continuation) => {
+                    run();
+                    setTimeout(() => {
+                        continuation();
+                    }, duration);
+                },
+                dispose
+            });
+        }
+        runNextTask(this);
     }
 
-    swims() {
-        console.log('float: both;');
+    continueWith (action) {
+        this.push(action, null, 0);
     }
-}
+};
 
-class Dog extends Card {
-    constructor() {
-        super("Пес-бандит", 3);
-    }
-}
 
-const seriffStartDeck = [
-    new Duck(),
-    new Duck(),
-    new Duck(),
-];
-
-const banditStartDeck = [
-    new Dog(),
-];
-
-const game = new Game(seriffStartDeck, banditStartDeck);
-
-SpeedRate.set(1);
-
-game.play(false, (winner) => {
-    alert('Победил ' + winner.name);
-});
+export default TaskQueue;
