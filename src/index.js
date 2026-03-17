@@ -113,8 +113,6 @@ class Gatling extends Creature {
     }
 }
 
-// Добавьте этот класс после Gatling
-
 class Lad extends Dog {
     constructor() {
         super("Браток", 2);
@@ -185,12 +183,108 @@ class Lad extends Dog {
     }
 }
 
+class Rogue extends Creature {
+    constructor() {
+        super("Изгой", 2);
+    }
+
+    stealAbilities(gameContext) {
+        const {currentPlayer, oppositePlayer} = gameContext;
+        
+        const allCards = [
+            ...currentPlayer.table.filter(card => card && card !== this),
+            ...oppositePlayer.table.filter(card => card && card !== this)
+        ];
+
+        const abilitiesToSteal = [
+            'modifyDealedDamageToCreature',
+            'modifyDealedDamageToPlayer',
+            'modifyTakenDamage'
+        ];
+
+        allCards.forEach(card => {
+            if (!card) return;
+
+            const cardPrototype = Object.getPrototypeOf(card);
+            const cardConstructor = card.constructor;
+
+            abilitiesToSteal.forEach(abilityName => {
+                if (cardPrototype.hasOwnProperty(abilityName) && 
+                    cardConstructor !== Rogue) {
+                    
+                    if (!this[abilityName]) {
+                        this[abilityName] = card[abilityName].bind(this);
+                    }
+                    
+                    delete cardPrototype[abilityName];
+                    
+                    if (card.updateView) {
+                        card.updateView();
+                    }
+                }
+            });
+        });
+
+        allCards.forEach(card => {
+            if (card && card.updateView) {
+                card.updateView();
+            }
+        });
+
+        if (gameContext.updateView) {
+            gameContext.updateView();
+        }
+    }
+
+    doBeforeAttack(gameContext, continuation) {
+        this.view.signalAbility(() => {
+            this.stealAbilities(gameContext);
+            
+            super.doBeforeAttack(gameContext, continuation);
+        });
+    }
+
+    modifyDealedDamageToCreature(value, toCard, gameContext, continuation) {
+        if (this.modifyDealedDamageToCreature && 
+            this.modifyDealedDamageToCreature !== Rogue.prototype.modifyDealedDamageToCreature) {
+            this.modifyDealedDamageToCreature(value, toCard, gameContext, continuation);
+        } else {
+            continuation(value);
+        }
+    }
+
+    modifyDealedDamageToPlayer(value, gameContext, continuation) {
+        if (this.modifyDealedDamageToPlayer && 
+            this.modifyDealedDamageToPlayer !== Rogue.prototype.modifyDealedDamageToPlayer) {
+            this.modifyDealedDamageToPlayer(value, gameContext, continuation);
+        } else {
+            continuation(value);
+        }
+    }
+
+    modifyTakenDamage(value, fromCard, gameContext, continuation) {
+        if (this.modifyTakenDamage && 
+            this.modifyTakenDamage !== Rogue.prototype.modifyTakenDamage) {
+            this.modifyTakenDamage(value, fromCard, gameContext, continuation);
+        } else {
+            continuation(value);
+        }
+    }
+
+    getDescriptions() {
+        const baseDescriptions = super.getDescriptions();
+        return ['При атаке похищает способности у карт того же типа', ...baseDescriptions];
+    }
+}
+
 const seriffStartDeck = [
     new Duck(),
     new Duck(),
     new Duck(),
+    new Rogue(),
 ];
 const banditStartDeck = [
+    new Lad(),
     new Lad(),
     new Lad(),
 ];
