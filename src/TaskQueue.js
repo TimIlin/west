@@ -1,54 +1,63 @@
-function runNextTask(taskQueue) {
-    if (taskQueue.running || taskQueue.tasks.length === 0) {
-        return;
-    }
-    taskQueue.running = true;
-    const task = taskQueue.tasks.shift();
+import Card from './Card.js';
+import Game from './Game.js';
+import TaskQueue from './TaskQueue.js';
+import SpeedRate from './SpeedRate.js';
 
-    if (task.runAndContinue) {
-        setTimeout(() => {
-            task.runAndContinue(() => {
-                task.dispose && task.dispose();
-                taskQueue.running = false;
+function isDuck(card) {
+    return card && card.quacks && card.swims;
+}
 
-                setTimeout(() => {
-                    runNextTask(taskQueue);
-                });
-            });
-        }, 0);
+function isDog(card) {
+    return card instanceof Dog;
+}
+
+function getCreatureDescription(card) {
+    if (isDuck(card) && isDog(card)) {
+        return 'Утка-Собака';
     }
-    else {
-        runNextTask(taskQueue);
+    if (isDuck(card)) {
+        return 'Утка';
+    }
+    if (isDog(card)) {
+        return 'Собака';
+    }
+    return 'Существо';
+}
+
+class Duck extends Card {
+    constructor() {
+        super("Мирная утка", 2);
+    }
+
+    quacks() {
+        console.log('quack');
+    }
+
+    swims() {
+        console.log('float: both;');
     }
 }
 
-class TaskQueue {
+class Dog extends Card {
     constructor() {
-        this.tasks = [];
-        this.running = false;
+        super("Пес-бандит", 3);
     }
+}
 
-    push (run, dispose, duration) {
-        if (duration === undefined || duration === null) {
-            this.tasks.push({runAndContinue: run, dispose});
-        } else {
-            this.tasks.push({
-                runAndContinue: (continuation) => {
-                    run();
-                    setTimeout(() => {
-                        continuation();
-                    }, duration);
-                },
-                dispose
-            });
-        }
-        runNextTask(this);
-    }
+const seriffStartDeck = [
+    new Duck(),
+    new Duck(),
+    new Duck(),
+];
 
-    continueWith (action) {
-        this.push(action, null, 0);
-    }
-};
+const banditStartDeck = [
+    new Dog(),
+];
 
+const game = new Game(seriffStartDeck, banditStartDeck);
 
-export default TaskQueue;
+SpeedRate.set(1);
+
+game.play(false, (winner) => {
+    alert('Победил ' + winner.name);
+});
