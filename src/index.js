@@ -196,7 +196,6 @@ class Lad extends Dog {
         return [...descriptions, ...baseDescriptions];
     }
 }
-
 class Rogue extends Creature {
     constructor() {
         super("Изгой", 2);
@@ -204,7 +203,6 @@ class Rogue extends Creature {
 
     stealAbilities(gameContext) {
         const {currentPlayer, oppositePlayer} = gameContext;
-        
         const allCards = [
             ...currentPlayer.table.filter(card => card && card !== this),
             ...oppositePlayer.table.filter(card => card && card !== this)
@@ -220,11 +218,9 @@ class Rogue extends Creature {
             if (!card) return;
 
             const cardPrototype = Object.getPrototypeOf(card);
-            const cardConstructor = card.constructor;
 
             abilitiesToSteal.forEach(abilityName => {
-                if (cardPrototype.hasOwnProperty(abilityName) && 
-                    cardConstructor !== Rogue) {
+                if (cardPrototype.hasOwnProperty(abilityName)) {
                     
                     if (!this[abilityName]) {
                         this[abilityName] = card[abilityName].bind(this);
@@ -259,8 +255,7 @@ class Rogue extends Creature {
     }
 
     modifyDealedDamageToCreature(value, toCard, gameContext, continuation) {
-        if (this.modifyDealedDamageToCreature && 
-            this.modifyDealedDamageToCreature !== Rogue.prototype.modifyDealedDamageToCreature) {
+        if (this.modifyDealedDamageToCreature !== Rogue.prototype.modifyDealedDamageToCreature) {
             this.modifyDealedDamageToCreature(value, toCard, gameContext, continuation);
         } else {
             continuation(value);
@@ -268,8 +263,7 @@ class Rogue extends Creature {
     }
 
     modifyDealedDamageToPlayer(value, gameContext, continuation) {
-        if (this.modifyDealedDamageToPlayer && 
-            this.modifyDealedDamageToPlayer !== Rogue.prototype.modifyDealedDamageToPlayer) {
+        if (this.modifyDealedDamageToPlayer !== Rogue.prototype.modifyDealedDamageToPlayer) {
             this.modifyDealedDamageToPlayer(value, gameContext, continuation);
         } else {
             continuation(value);
@@ -277,8 +271,7 @@ class Rogue extends Creature {
     }
 
     modifyTakenDamage(value, fromCard, gameContext, continuation) {
-        if (this.modifyTakenDamage && 
-            this.modifyTakenDamage !== Rogue.prototype.modifyTakenDamage) {
+        if (this.modifyTakenDamage !== Rogue.prototype.modifyTakenDamage) {
             this.modifyTakenDamage(value, fromCard, gameContext, continuation);
         } else {
             continuation(value);
@@ -291,6 +284,46 @@ class Rogue extends Creature {
     }
 }
 
+class Nemo extends Creature {
+    constructor() {
+        super("Немо", 4);
+    }
+
+    doBeforeAttack(gameContext, continuation) {
+        this.view.signalAbility(() => {
+            const {currentPlayer, oppositePlayer} = gameContext;
+            
+            const targetCard = oppositePlayer.table.find(card => card !== null);
+            
+            if (targetCard && targetCard !== this) {
+                const oldPrototype = Object.getPrototypeOf(this);
+                const targetPrototype = Object.getPrototypeOf(targetCard);
+                
+                Object.setPrototypeOf(this, targetPrototype);
+                
+                this.updateView();
+                
+                if (targetPrototype.hasOwnProperty('doBeforeAttack') && 
+                    targetPrototype.doBeforeAttack !== Creature.prototype.doBeforeAttack) {
+                    
+                    targetPrototype.doBeforeAttack.call(this, gameContext, () => {
+                        continuation();
+                    });
+                } else {
+                    continuation();
+                }
+            } else {
+                continuation();
+            }
+        });
+    }
+
+    getDescriptions() {
+        const baseDescriptions = super.getDescriptions();
+        return ['Крадет прототип и способности врага', ...baseDescriptions];
+    }
+}
+
 const seriffStartDeck = [
     new Duck(),
     new Duck(),
@@ -300,7 +333,7 @@ const seriffStartDeck = [
 const banditStartDeck = [
     new Lad(),
     new Lad(),
-    new Lad(),
+    new Nemo(),
 ];
 
 const game = new Game(seriffStartDeck, banditStartDeck);
